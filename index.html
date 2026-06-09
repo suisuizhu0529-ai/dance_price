@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>舞蹈厂牌售卡精算对比</title>
+    <title>舞蹈厂牌售卡对比精算</title>
     <style>
         :root {
             --navy: #0f172a;
@@ -67,18 +67,18 @@
         .tuning-panel { background: var(--slate-50); border: 1px solid var(--slate-200); border-radius: 12px; padding: 12px; margin-bottom: 15px; display: grid; grid-template-columns: repeat(2, 1fr); gap: 10px; }
         .tuning-group { display: flex; flex-direction: column; gap: 4px; }
         .tuning-group label { font-size: 11px; color: var(--slate-600); font-weight: 600; }
-        .tuning-group input { width: 100%; padding: 6px 10px; border: 1px solid var(--slate-200); border-radius: 6px; font-size: 13px; font-weight: 600; color: var(--navy); background: #ffffff; }
+        .tuning-group input, .tuning-group select { width: 100%; padding: 6px 10px; border: 1px solid var(--slate-200); border-radius: 6px; font-size: 13px; font-weight: 600; color: var(--navy); background: #ffffff; height: 34px; }
+
+        /* 可编辑下拉框增强容器 */
+        .editable-select-container { position: relative; width: 100%; display: flex; gap: 4px; }
+        .editable-select-container input { padding-right: 32px; }
+        .editable-select-container select { position: absolute; left: 0; top: 0; width: 100%; height: 100%; opacity: 0; cursor: pointer; pointer-events: none; }
+        .select-trigger-btn { position: absolute; right: 0; top: 0; width: 32px; height: 100%; background: none; border: none; color: var(--slate-600); font-size: 11px; cursor: pointer; display: flex; align-items: center; justify-content: center; }
 
         .add-btn { background: var(--slate-700); color: white; border: none; padding: 9px; border-radius: 6px; font-weight: 700; font-size: 12px; cursor: pointer; text-align: center; transition: background 0.2s; }
         .add-btn:active { opacity: 0.8; }
-
-        /* iOS 上传安全底层容器 */
-        .upload-zone { position: relative; border: 1px dashed var(--slate-300); background-color: var(--slate-50); border-radius: 12px; padding: 14px; text-align: center; cursor: pointer; margin-bottom: 15px; overflow: hidden; }
-        .upload-icon { font-size: 20px; margin-bottom: 2px; display: block; pointer-events: none; opacity: 0.7; }
-        .upload-text { font-size: 12px; font-weight: 600; color: var(--slate-600); pointer-events: none; }
-        .ios-file-overlay { position: absolute; top: 0; left: 0; width: 100%; height: 100%; opacity: 0; cursor: pointer; font-size: 100px; }
         
-        .risk-list { display: flex; flex-direction: column; gap: 10px; }
+        .risk-list { display: flex; flex-direction: column; gap: 10px; margin-top: 10px; }
         .risk-row { display: flex; align-items: center; background: #ffffff; border: 1px solid var(--slate-200); border-radius: 12px; padding: 12px; }
         .risk-checkbox-wrapper { padding-right: 12px; display: flex; align-items: center; }
         .risk-checkbox-wrapper input[type="checkbox"] { width: 18px; height: 18px; border-radius: 4px; accent-color: var(--navy); }
@@ -96,22 +96,20 @@
 
 <div class="container">
     <header>
-        <h1>舞蹈厂牌售卡精算对比</h1>
+        <h1>舞蹈厂牌售卡对比精算</h1>
         <p>纯净隔离比价引擎</p>
     </header>
 
     <div class="history-anchor">
         <div class="anchor-top" onclick="toggleHistoryLogs()">
-            <div class="anchor-title" id="history-filter-title">⚓ 历史比价账目核算 (点击展开/收起) ▾</div>
+            <div class="anchor-title" id="history-filter-title">⚓ 历史购卡价格参考 (点击展开/收起) ▾</div>
             <div class="anchor-val" id="history-avg-display">计算中...</div>
         </div>
-        <div class="history-logs" id="history-logs-box">
-            </div>
+        <div class="history-logs" id="history-logs-box"></div>
     </div>
 
-    <div class="section-title">🏢 方案对比分析轴 (价格最优已排首位 · 左右滑动)</div>
-    <div class="dashboard-scroll" id="studio-board-container">
-        </div>
+    <div class="section-title">🏢 方案对比 (最低价已自动排在首位 · 左右滑动)</div>
+    <div class="dashboard-scroll" id="studio-board-container"></div>
 
     <div class="section-title">🛠️ 账面数据核算校准器 (所见即所得)</div>
     <div class="tuning-panel">
@@ -122,9 +120,15 @@
         </div>
         
         <div class="tuning-group" style="grid-column: span 2;">
-            <label>✍️ 编辑选中方案名称 (空格前的字将自动作为该厂牌名进行分类隔离)</label>
-            <input type="text" id="tune-name" oninput="handleManualTune()">
+            <label>✍️ 选择或输入方案名称 (第一个词将自动转换大写作为厂牌标识)</label>
+            <div class="editable-select-container">
+                <input type="text" id="tune-name" oninput="handleManualTune()" placeholder="请输入或选择舞房厂牌方案">
+                <button class="select-trigger-btn" onclick="triggerDropdownSelect(event)">▼</button>
+                <select id="tune-name-dropdown" onchange="handleDropdownSelect(this)">
+                    </select>
+            </div>
         </div>
+
         <div class="tuning-group">
             <label>账面折后总价 (元)</label>
             <input type="number" id="tune-price" oninput="handleManualTune()">
@@ -141,24 +145,27 @@
             <label>1阶段次数 (节)</label>
             <input type="number" id="tune-count1" oninput="handleManualTune()">
         </div>
-        <div class="tuning-group">
-            <label>⏳ 2阶段时效 (天)</label>
-            <input type="number" id="tune-days2" oninput="handleManualTune()">
+
+        <div class="tuning-group" style="grid-column: span 2; flex-direction: row; align-items: center; gap: 8px; margin: 4px 0;">
+            <input type="checkbox" id="enable-complex-phase" style="width:16px; height:16px;" onchange="togglePhaseInputs()">
+            <label for="enable-complex-phase" style="font-size: 12px; color: var(--blue); cursor:pointer;">开启多阶段复杂分期消卡</label>
         </div>
-        <div class="tuning-group">
-            <label>⏳ 2阶段次数 (节)</label>
-            <input type="number" id="tune-count2" oninput="handleManualTune()">
+
+        <div id="complex-phase-fields" style="grid-column: span 2; display: none; grid-template-columns: repeat(2, 1fr); gap: 10px; width: 100%;">
+            <div class="tuning-group">
+                <label>⏳ 2阶段时效 (天)</label>
+                <input type="number" id="tune-days2" oninput="handleManualTune()">
+            </div>
+            <div class="tuning-group">
+                <label>⏳ 2阶段次数 (节)</label>
+                <input type="number" id="tune-count2" oninput="handleManualTune()">
+            </div>
         </div>
+
         <div class="tuning-group" style="grid-column: span 2;">
-            <label>🏃‍♂️ 设定个人消卡极限(次/周)</label>
+            <label>跑动个人消卡极限(次/周)</label>
             <input type="number" id="tune-frequency" value="1.8" step="0.1" oninput="handleManualTune()">
         </div>
-    </div>
-
-    <div class="upload-zone">
-        <span class="upload-icon">📁</span>
-        <div class="upload-text">选取或拍照扫描新舞房海报/对账单</div>
-        <input type="file" class="ios-file-overlay" accept="image/*" onchange="mockPosterAnalysis(event)">
     </div>
 
     <div class="section-title">🚨 当前方案动态运营风控</div>
@@ -169,7 +176,7 @@
             </div>
             <div class="risk-content">
                 <div class="risk-row-title" style="color:var(--danger);">💥 工资发不出 (薪资拖欠/导师暗中维权)</div>
-                <div class="risk-desc">【⚠️一票否决】独立于权重之外，直接触发核心财务熔断，全面禁止办卡。</div>
+                <div class="risk-row-desc">【极高风险】存在拖欠员工薪资纠纷，舞房可能随时停业或更换团队。</div>
             </div>
         </div>
 
@@ -179,7 +186,7 @@
             </div>
             <div class="risk-content">
                 <div class="risk-row-title" style="color:var(--danger);">👩‍🏫 核心名师流失 (导师出走/自立门户)</div>
-                <div class="risk-desc">资产主观贬值溢价系数：提升至 <b>+50%</b> 成本摊销</div>
+                <div class="risk-row-desc">优质导师离职，上课体验和卡片含金量会大幅缩水（价格风险折算 +50%）。</div>
             </div>
         </div>
 
@@ -188,8 +195,8 @@
                 <input type="checkbox" id="r-promo" onchange="recalculate()">
             </div>
             <div class="risk-content">
-                <div class="risk-row-title" style="color:var(--warning);">🔥 疯狂促销 (套娃满减/击穿底线频繁回笼)</div>
-                <div class="risk-desc">资产主观贬值溢价系数：提升至 <b>+30%</b> 成本摊销</div>
+                <div class="risk-row-title" style="color:var(--warning);">🔥 疯狂促销 (套娃满减/频繁回笼资金)</div>
+                <div class="risk-row-desc">舞房频繁降价急于回笼资金，随时有跑路或后续进一步贬值的风险（价格风险折算 +30%）。</div>
             </div>
         </div>
 
@@ -199,7 +206,7 @@
             </div>
             <div class="risk-content">
                 <div class="risk-row-title" style="color:var(--slate-700);">😮‍💨 前台消极怠工 (基层士气/约课敷衍)</div>
-                <div class="risk-desc">资产主观贬值溢价系数：提升至 <b>+20%</b> 成本摊销</div>
+                <div class="risk-row-desc">服务体验变差，后续选课、约课以及退改签处理会非常吃力心累（价格风险折算 +20%）。</div>
             </div>
         </div>
     </div>
@@ -216,26 +223,28 @@
     let schemeCounter = 3; 
     let showHistoryLogs = true;
 
+    // 默认内置的常用厂牌库（全部自动转为大写格式）N V', 'LOHAS', 'BOUNCE', 'RB', 'BODYSOUL', '
+    let customBrandList = ['MADE IONEWAY', 'SYNC', 'P社', 'GH5', 'RB'];
+
     let studioData = {
         scheme_3: { name: 'MADE IN V 周年包', price: 3940, totalCount: 100, days1: 365, count1: 100, days2: 0, count2: 0, base: 39.40, isComplex: false },
         scheme_1: { name: 'LOHAS 组合大包', price: 5898, totalCount: 130, days1: 120, count1: 30, days2: 480, count2: 100, base: 45.37, isComplex: true },
-        scheme_2: { name: 'Bounce 减免包', price: 5186.8, totalCount: 88, days1: 365, count1: 88, days2: 0, count2: 0, base: 58.94, isComplex: false }
+        scheme_2: { name: 'BOUNCE 减免包', price: 5186.8, totalCount: 88, days1: 365, count1: 88, days2: 0, count2: 0, base: 58.94, isComplex: false }
     };
 
-    // 核心历史数据库
     let historyPriceDatabase = [
-        { id: 'h_3', studio: 'MADE IN V', date: '2024.12', title: 'MADE IN V 纯净对账单', price: 5500, count: 100 },
-        { id: 'h_1', studio: 'LOHAS', date: '2025.10', title: 'LOHAS 120节历史存根', price: 6300, count: 120 },
-        { id: 'h_2', studio: 'Bounce', date: '2025.05', title: 'Bounce 活动减免卡', price: 4998, count: 88 }
+        { id: 'h_3', studio: 'MADE IN V', date: '2024.12', title: 'MADE IN V 历史购卡记录', price: 5500, count: 100 },
+        { id: 'h_1', studio: 'LOHAS', date: '2025.10', title: 'LOHAS 120节以往成交价', price: 6300, count: 120 },
+        { id: 'h_2', studio: 'BOUNCE', date: '2025.05', title: 'BOUNCE 活动减免卡', price: 4998, count: 88 }
     ];
 
-    // 本地持久化缓存读写
     function saveLocalCache() {
         try {
             localStorage.setItem('dance_studioData', JSON.stringify(studioData));
             localStorage.setItem('dance_historyPrice', JSON.stringify(historyPriceDatabase));
             localStorage.setItem('dance_currentStudio', currentStudio);
             localStorage.setItem('dance_schemeCounter', schemeCounter);
+            localStorage.setItem('dance_customBrands', JSON.stringify(customBrandList));
         } catch (e) {
             console.log("Localstorage write failed", e);
         }
@@ -244,19 +253,16 @@
     function loadLocalCache() {
         try {
             const sData = localStorage.getItem('dance_studioData');
-            const hData = localStorage.getItem('dance_history', 'dance_historyPrice'); // Compatibility with old key
             const hDataNew = localStorage.getItem('dance_historyPrice');
             const cStudio = localStorage.getItem('dance_currentStudio');
             const sCounter = localStorage.getItem('dance_schemeCounter');
+            const cBrands = localStorage.getItem('dance_customBrands');
 
             if (sData) studioData = JSON.parse(sData);
-            if (hDataNew) {
-                historyPriceDatabase = JSON.parse(hDataNew);
-            } else if (hData) {
-                historyPriceDatabase = JSON.parse(hData);
-            }
+            if (hDataNew) historyPriceDatabase = JSON.parse(hDataNew);
             if (cStudio && studioData[cStudio]) currentStudio = cStudio;
             if (sCounter) schemeCounter = parseInt(sCounter) || 3;
+            if (cBrands) customBrandList = JSON.parse(cBrands);
         } catch(e) {
             console.log("Localstorage read failed", e);
         }
@@ -264,10 +270,81 @@
 
     window.onload = function() {
         loadLocalCache();
+        populateBrandDropdown();
         renderDashboardCards();
         syncTuningPanel();
         recalculate();
     };
+
+    /* 优化：动态填充厂牌下拉列表，增加自定义新增按钮 */
+    function populateBrandDropdown() {
+        const dropdown = document.getElementById('tune-name-dropdown');
+        
+        // 合并默认厂牌、历史数据库里的厂牌，并全部去重且强制转换为大写
+        const databaseBrands = historyPriceDatabase.map(item => item.studio.toUpperCase());
+        const combined = [...new Set([...customBrandList.map(b => b.toUpperCase()), ...databaseBrands])].filter(Boolean);
+        
+        let htmlStr = '<option value="" disabled selected style="display:none;">--- 快捷选择已有厂牌 ---</option>';
+        combined.forEach(brand => {
+            htmlStr += `<option value="${brand}">${brand}</option>`;
+        });
+        
+        // 底部追加自定义新厂牌的操作锚点
+        htmlStr += `<option value="__ADD_NEW_BRAND__" style="color: var(--blue); font-weight: bold;">[➕ 自定义新厂牌...]</option>`;
+        dropdown.innerHTML = htmlStr;
+    }
+
+    function triggerDropdownSelect(e) {
+        e.preventDefault();
+        const dropdown = document.getElementById('tune-name-dropdown');
+        dropdown.style.pointerEvents = 'auto';
+        dropdown.focus();
+        let clickEvent = new MouseEvent('mousedown', { bubbles: true, cancelable: true, view: window });
+        dropdown.dispatchEvent(clickEvent);
+    }
+
+    /* 联动处理：选择特定厂牌或触发自定义输入 */
+    function handleDropdownSelect(selectElem) {
+        const val = selectElem.value;
+        if (!val) return;
+
+        const nameInput = document.getElementById('tune-name');
+
+        if (val === '__ADD_NEW_BRAND__') {
+            selectElem.value = "";
+            selectElem.style.pointerEvents = 'none';
+            
+            // 弹出自定义新增窗
+            const userNewBrand = prompt("请输入全新舞房厂牌名称(英文会自动转换大写):");
+            if (userNewBrand && userNewBrand.trim() !== "") {
+                const formattedBrand = userNewBrand.trim().toUpperCase();
+                if (!customBrandList.includes(formattedBrand)) {
+                    customBrandList.push(formattedBrand);
+                    saveLocalCache();
+                    populateBrandDropdown();
+                }
+                nameInput.value = formattedBrand + " 新设产品";
+                handleManualTune();
+            }
+            return;
+        }
+
+        nameInput.value = val + " 新设产品"; 
+        selectElem.style.pointerEvents = 'none';
+        handleManualTune();
+    }
+
+    function togglePhaseInputs() {
+        const isChecked = document.getElementById('enable-complex-phase').checked;
+        const complexContainer = document.getElementById('complex-phase-fields');
+        complexContainer.style.display = isChecked ? 'grid' : 'none';
+        
+        if (!isChecked) {
+            document.getElementById('tune-days2').value = 0;
+            document.getElementById('tune-count2').value = 0;
+        }
+        handleManualTune();
+    }
 
     function toggleHistoryLogs() {
         const box = document.getElementById('history-logs-box');
@@ -292,30 +369,25 @@
         saveLocalCache();
     }
 
-    // 🔥 核心修正引擎：智能提取厂牌标识
+    /* 厂牌提取逻辑优化：确保提取出的英文文本直接大写 */
     function getStudioTag(name) {
         if (!name) return "";
         if (name.startsWith('未命名') || name.startsWith('自定义')) return ""; 
 
         const upperName = name.toUpperCase();
         
-        if (upperName.includes('LOHAS') || upperName.includes('乐')) return "LOHAS";
-        if (upperName.includes('BOUNCE')) return "Bounce";
-        if (upperName.includes('MADE IN V') || upperName === 'V') return "MADE IN V";
-        if (upperName.includes('P社')) return "P社";
-        if (upperName.includes('GH5')) return "GH5";
-        if (upperName.includes('RB')) return "RB";
-
-        const existingTags = [...new Set(historyPriceDatabase.map(h => h.studio))].filter(Boolean);
-        existingTags.sort((a,b) => b.length - a.length);
-        for (let tag of existingTags) {
-            if (upperName.includes(tag.toUpperCase())) return tag;
+        // 优先匹配当前已知大盘内的核心厂牌前缀
+        const databaseBrands = historyPriceDatabase.map(item => item.studio.toUpperCase());
+        const allKnownBrands = [...new Set([...customBrandList.map(b => b.toUpperCase()), ...databaseBrands])].filter(Boolean);
+        
+        // 降序排列防止包含关系错乱
+        allKnownBrands.sort((a,b) => b.length - a.length);
+        for (let tag of allKnownBrands) {
+            if (upperName.includes(tag)) return tag;
         }
 
-        if (name.includes(' ')) {
-            return name.split(' ')[0].trim();
-        }
-        return name.substring(0, 4).trim();
+        if (name.includes(' ')) return name.split(' ')[0].trim().toUpperCase();
+        return name.substring(0, 8).trim().toUpperCase();
     }
 
     function handleHistoryRowChange(id, field, value) {
@@ -329,10 +401,11 @@
 
         let newTag = getStudioTag(record.title);
         if(newTag === "") newTag = "全局暂存";
-        record.studio = newTag;
+        record.studio = newTag.toUpperCase();
 
         recalculate();
         saveLocalCache();
+        populateBrandDropdown();
     }
 
     function deleteHistoryRecord(id) {
@@ -341,6 +414,7 @@
             historyPriceDatabase.splice(index, 1);
             recalculate();
             saveLocalCache();
+            populateBrandDropdown();
         }
     }
 
@@ -381,6 +455,7 @@
 
         let parsedStudioTag = getStudioTag(data.name);
         if(parsedStudioTag === "") parsedStudioTag = "新建厂牌" + Date.now().toString().slice(-4);
+        parsedStudioTag = parsedStudioTag.toUpperCase();
 
         const dObj = new Date();
         const curDateStr = `${dObj.getFullYear()}.${String(dObj.getMonth() + 1).padStart(2, '0')}`;
@@ -388,7 +463,7 @@
         historyPriceDatabase.unshift({
             id: 'h_dyn_' + Date.now(),
             studio: parsedStudioTag,
-            date: curStr,
+            date: curDateStr,
             title: data.name,
             price: data.price,
             count: data.totalCount
@@ -397,13 +472,19 @@
         alert(`✅ 归档成功！当前账面已作为 [${parsedStudioTag}] 厂牌的历史参考基准存入数据库。`);
         recalculate(); 
         saveLocalCache();
+        populateBrandDropdown();
     }
 
     function renderDashboardCards() {
         const container = document.getElementById('studio-board-container');
         let htmlStr = '';
 
-        Object.keys(studioData).forEach(id => {
+        const sortedSchemes = Object.keys(studioData)
+            .map(id => ({ id, ...studioData[id] }))
+            .sort((a, b) => a.base - b.base);
+
+        sortedSchemes.forEach(scheme => {
+            const id = scheme.id;
             const d = studioData[id];
             const activeClass = (id === currentStudio) ? 'active' : '';
             
@@ -454,12 +535,16 @@
         const data = studioData[currentStudio];
         if(!data) return;
         document.getElementById('tune-name').value = data.name;
-        document.getElementById('tuneprice').value = data.price || '';
-        document.getElementById('tunecount').value = data.totalCount || '';
-        document.getElementById('tunedays1').value = data.days1 || '';
-        document.getElementById('tunecount1').value = data.count1 || '';
-        document.getElementById('tunedays2').value = data.days2 || '';
-        document.getElementById('tunecount2').value = data.count2 || '';
+        document.getElementById('tune-price').value = data.price || '';
+        document.getElementById('tune-count').value = data.totalCount || '';
+        document.getElementById('tune-days1').value = data.days1 || '';
+        document.getElementById('tune-count1').value = data.count1 || '';
+        document.getElementById('tune-days2').value = data.days2 || '';
+        document.getElementById('tune-count2').value = data.count2 || '';
+
+        document.getElementById('enable-complex-phase').checked = data.isComplex;
+        document.getElementById('complex-phase-fields').style.display = data.isComplex ? 'grid' : 'none';
+        document.getElementById('tune-name-dropdown').value = ""; 
     }
 
     function handleManualTune() {
@@ -468,8 +553,10 @@
         const totalC = parseInt(document.getElementById('tune-count').value) || 0;
         const d1 = parseInt(document.getElementById('tune-days1').value) || 0;
         const c1 = parseInt(document.getElementById('tune-count1').value) || 0;
-        const d2 = parseInt(document.getElementById('tune-days2').value) || 0;
-        const c2 = parseInt(document.getElementById('tune-count2').value) || 0;
+        
+        const isComplexChecked = document.getElementById('enable-complex-phase').checked;
+        const d2 = isComplexChecked ? (parseInt(document.getElementById('tune-days2').value) || 0) : 0;
+        const c2 = isComplexChecked ? (parseInt(document.getElementById('tune-count2').value) || 0) : 0;
         
         if(!studioData[currentStudio]) return;
         studioData[currentStudio].name = nameInput;
@@ -480,15 +567,10 @@
         studioData[currentStudio].days2 = d2;
         studioData[currentStudio].count2 = c2;
         
-        studioData[currentStudio].isComplex = (d2 > 0 || c2 > 0);
+        studioData[currentStudio].isComplex = isComplexChecked;
         studioData[currentStudio].base = totalC > 0 ? p / totalC : 0;
         
-        const cardNode = document.getElementById('card-' + currentStudio);
-        if(cardNode) {
-            const titleNode = cardNode.querySelector('.card-title');
-            if(titleNode) titleNode.innerText = nameInput;
-        }
-        
+        renderDashboardCards();
         recalculate();
         saveLocalCache();
     }
@@ -498,30 +580,30 @@
         const titleNode = document.getElementById('history-filter-title');
         const avgDisplayNode = document.getElementById('history-avg-display');
         
-        const matchedTag = getStudioTag(currentName);
+        const matchedTag = getStudioTag(currentName).toUpperCase();
 
         let filteredList = historyPriceDatabase;
         if(matchedTag !== "") {
-            filteredList = historyPriceDatabase.filter(item => item.studio.toUpperCase() === matchedTag.toUpperCase());
-            titleNode.innerText = `⚓ [${matchedTag}] 专属历史比价空间 ▾`;
+            filteredList = historyPriceDatabase.filter(item => item.studio.toUpperCase() === matchedTag);
+            titleNode.innerText = `⚓ [${matchedTag}] 历史购卡价格参考 ▾`;
         } else {
-            titleNode.innerText = `⚓ 历史比价账目核算 (全局大盘视图) ▾`;
+            titleNode.innerText = `⚓ 历史比价账目核算 (大盘视图) ▾`;
         }
 
         if(filteredList.length > 0) {
             const sumPrice = filteredList.reduce((acc, c) => acc + c.price, 0);
             const sumCount = filteredList.reduce((acc, c) => acc + c.count, 0);
             const weightedAvg = sumCount > 0 ? sumPrice / sumCount : 55.0;
-            avgDisplayNode.innerText = `加权基准: ¥${weightedAvg.toFixed(2)}/节`;
+            avgDisplayNode.innerText = `均价基准: ¥${weightedAvg.toFixed(2)}/节`;
         } else {
             avgDisplayNode.innerText = `该厂牌暂无参考线`;
         }
 
         if(filteredList.length === 0) {
             if(matchedTag !== "") {
-                logsContainer.innerHTML = `<div style="text-align:center; color:#64748b; font-size:11px; padding:10px;">这是全新的舞房品牌 [<b>${matchedTag}</b>]，该厂牌无历史对账单。<br>请在下方录入首笔数据后点击 [💾 归档]。</div>`;
+                logsContainer.innerHTML = `<div style="text-align:center; color:#64748b; font-size:11px; padding:10px;">发现新舞房品牌 [<b>${matchedTag}</b>]，该厂牌无历史存根。<br>请录入首笔数据后点击归档。</div>`;
             } else {
-                logsContainer.innerHTML = `<div style="text-align:center; color:#94a3b8; font-size:11px; padding:10px;">暂无该分类的对账，可在上方输入数据后点击归档保存。</div>`;
+                logsContainer.innerHTML = `<div style="text-align:center; color:#94a3b8; font-size:11px; padding:10px;">暂无对账记录。</div>`;
             }
             return;
         }
@@ -532,7 +614,7 @@
             htmlStr += `
                 <div class="history-edit-row">
                     <input class="h-input-date" type="text" value="${item.date}" oninput="handleHistoryRowChange('${item.id}', 'date', this.value)">
-                    <input class="h-input-title" type="text" value="${item.title}" oninput="handleHistoryRowChange('${item.id}', 'title', this.value)">
+                    <input class="h-input-title" type="text" value="${item.title.toUpperCase()}" oninput="handleHistoryRowChange('${item.id}', 'title', this.value)">
                     <input class="h-input-num" type="number" value="${item.price}" oninput="handleHistoryRowChange('${item.id}', 'price', this.value)">
                     <span style="color:#cbd5e1">/</span>
                     <input class="h-input-num" type="number" value="${item.count}" oninput="handleHistoryRowChange('${item.id}', 'count', this.value)">
@@ -542,39 +624,6 @@
             `;
         });
         logsContainer.innerHTML = htmlStr;
-    }
-
-    // 🔥 海报分析解析模拟：自动生成扫描卡片
-    function mockPosterAnalysis(event) {
-        if(event.target.files.length > 0) {
-            schemeCounter++;
-            const newId = 'scheme_' + schemeCounter;
-            
-            studioData[newId] = {
-                name: '海报解析新厂牌 ' + schemeCounter,
-                price: 2600,
-                totalCount: 40,
-                days1: 180,
-                count1: 40,
-                days2: 0,
-                count2: 0,
-                base: 65.00,
-                isComplex: false
-            };
-
-            currentStudio = newId; 
-            renderDashboardCards();
-            syncTuningPanel(); 
-            recalculate();
-            saveLocalCache();
-            
-            setTimeout(() => {
-                const container = document.getElementById('studio-board-container');
-                container.scrollLeft = container.scrollWidth;
-            }, 100);
-
-            alert("✨ 扫描解析完成！已为您在看板中生成一张新厂牌的精算对账卡片。");
-        }
     }
 
     function recalculate() {
@@ -591,34 +640,34 @@
         const auditTextNode = document.getElementById('dynamic-audit-text');
         const priceDisplayNode = document.getElementById('real-risk-cost-display');
         
-        document.getElementById('current-studio-name').innerText = "当前呈现：" + data.name;
+        document.getElementById('current-studio-name').innerText = "当前呈现：" + data.name.toUpperCase();
 
         updateFilteredHistoryRecords(data.name);
         updateTopDashboardValues(userLimit);
 
         if (isSalaryArrears) {
-            priceDisplayNode.innerHTML = "<span style='color:var(--danger); font-weight:800;'>🛑 一票否决 (强制拦截行为)</span>";
-            auditTextNode.innerHTML = `⚠️ 顶格财务熔断：检测到拖欠薪资情况。系统强制拦截一切资金追加投入。`;
+            priceDisplayNode.innerHTML = "<span style='color:var(--danger); font-weight:800;'>🛑 强制拦截</span>";
+            auditTextNode.innerHTML = `⚠️ 风险提示：检测到存在欠薪维权事件，建议全面禁止办卡投入。`;
             return; 
         }
 
         const finalCost = data.base * riskFactor;
-        priceDisplayNode.innerHTML = "¥" + finalCost.toFixed(2) + " <span style='font-size:12px; font-weight:normal; color:#94a3b8;'>风险调整后真实成本</span>";
+        priceDisplayNode.innerHTML = "¥" + finalCost.toFixed(2) + " <span style='font-size:12px; font-weight:normal; color:#94a3b8;'>风险折算后真实单价</span>";
 
         let pressureWarningText = "";
         if (data.isComplex) {
             const p1Pressure = data.days1 > 0 ? (data.count1 / (data.days1 / 7)) : 0;
             const p2Pressure = data.days2 > 0 ? (data.count2 / (data.days2 / 7)) : 0;
-            pressureWarningText = `<br>⏳ 消卡负荷：1阶段 ${p1Pressure.toFixed(2)} 次/周 | 2阶段 ${p2Pressure.toFixed(2)} 次/周`;
+            pressureWarningText = `<br>⏳ 消卡指标：1阶段 ${p1Pressure.toFixed(2)} 次/周 | 2阶段 ${p2Pressure.toFixed(2)} 次/周`;
         } else {
             const weeklyPressure = data.days1 > 0 ? (data.totalCount / (data.days1 / 7)) : 0;
-            pressureWarningText = weeklyPressure > userLimit ? `<br><span style="color:var(--warning);">⚠️ 履约消卡压力超载：折合 ${weeklyPressure.toFixed(2)}次/周</span>` : `<br><span style="color:var(--success);">🟢 消卡压力安全：折合 ${weeklyPressure.toFixed(2)}次/周</span>`;
+            pressureWarningText = weeklyPressure > userLimit ? `<br><span style="color:var(--warning);">⚠️ 消卡压力较大：折合 ${weeklyPressure.toFixed(2)}次/周 (超过个人极限)</span>` : `<br><span style="color:var(--success);">🟢 消卡压力安全：折合 ${weeklyPressure.toFixed(2)}次/周</span>`;
         }
 
         if (riskFactor > 1) {
-            auditTextNode.innerHTML = `🚨 运营风险溢价已叠加，真实对账成本上浮 ${Math.round((riskFactor-1)*100)}%。${pressureWarningText}`;
+            auditTextNode.innerHTML = `🚨 包含风险上浮：由于存在运营风险，预估真实单价增加 ${Math.round((riskFactor-1)*100)}%。${pressureWarningText}`;
         } else {
-            auditTextNode.innerHTML = `💡 当前沙盒风控纯净。该资产账面精算折算单价为 ¥${finalCost.toFixed(2)}/节。${pressureWarningText}`;
+            auditTextNode.innerHTML = `💡 当前状态良好：该方案单节折算均价为 ¥${finalCost.toFixed(2)}/节。${pressureWarningText}`;
         }
     }
 
