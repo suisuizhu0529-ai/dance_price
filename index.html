@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>舞卡资产精算与多维防跑路汇总看板 V10.01</title>
+    <title>舞蹈厂牌售卡精算对比</title>
     <style>
         :root {
             --navy: #0f172a;
@@ -96,8 +96,8 @@
 
 <div class="container">
     <header>
-        <h1>📊 舞卡资产精算汇总看板 V10.0</h1>
-        <p>📱 iPhone 移动端专用 · 纯净隔离比价引擎</p>
+        <h1>舞蹈厂牌售卡精算对比</h1>
+        <p>纯净隔离比价引擎</p>
     </header>
 
     <div class="history-anchor">
@@ -216,20 +216,54 @@
     let schemeCounter = 3; 
     let showHistoryLogs = true;
 
-    const studioData = {
+    let studioData = {
         scheme_3: { name: 'MADE IN V 周年包', price: 3940, totalCount: 100, days1: 365, count1: 100, days2: 0, count2: 0, base: 39.40, isComplex: false },
         scheme_1: { name: 'LOHAS 组合大包', price: 5898, totalCount: 130, days1: 120, count1: 30, days2: 480, count2: 100, base: 45.37, isComplex: true },
         scheme_2: { name: 'Bounce 减免包', price: 5186.8, totalCount: 88, days1: 365, count1: 88, days2: 0, count2: 0, base: 58.94, isComplex: false }
     };
 
     // 核心历史数据库
-    const historyPriceDatabase = [
+    let historyPriceDatabase = [
         { id: 'h_3', studio: 'MADE IN V', date: '2024.12', title: 'MADE IN V 纯净对账单', price: 5500, count: 100 },
         { id: 'h_1', studio: 'LOHAS', date: '2025.10', title: 'LOHAS 120节历史存根', price: 6300, count: 120 },
         { id: 'h_2', studio: 'Bounce', date: '2025.05', title: 'Bounce 活动减免卡', price: 4998, count: 88 }
     ];
 
+    // 本地持久化缓存读写
+    function saveLocalCache() {
+        try {
+            localStorage.setItem('dance_studioData', JSON.stringify(studioData));
+            localStorage.setItem('dance_historyPrice', JSON.stringify(historyPriceDatabase));
+            localStorage.setItem('dance_currentStudio', currentStudio);
+            localStorage.setItem('dance_schemeCounter', schemeCounter);
+        } catch (e) {
+            console.log("Localstorage write failed", e);
+        }
+    }
+
+    function loadLocalCache() {
+        try {
+            const sData = localStorage.getItem('dance_studioData');
+            const hData = localStorage.getItem('dance_history', 'dance_historyPrice'); // Compatibility with old key
+            const hDataNew = localStorage.getItem('dance_historyPrice');
+            const cStudio = localStorage.getItem('dance_currentStudio');
+            const sCounter = localStorage.getItem('dance_schemeCounter');
+
+            if (sData) studioData = JSON.parse(sData);
+            if (hDataNew) {
+                historyPriceDatabase = JSON.parse(hDataNew);
+            } else if (hData) {
+                historyPriceDatabase = JSON.parse(hData);
+            }
+            if (cStudio && studioData[cStudio]) currentStudio = cStudio;
+            if (sCounter) schemeCounter = parseInt(sCounter) || 3;
+        } catch(e) {
+            console.log("Localstorage read failed", e);
+        }
+    }
+
     window.onload = function() {
+        loadLocalCache();
         renderDashboardCards();
         syncTuningPanel();
         recalculate();
@@ -255,17 +289,16 @@
         renderDashboardCards();
         syncTuningPanel();
         recalculate();
+        saveLocalCache();
     }
 
     // 🔥 核心修正引擎：智能提取厂牌标识
     function getStudioTag(name) {
         if (!name) return "";
-        // 只有初始默认名称才会触发全局大盘视图
         if (name.startsWith('未命名') || name.startsWith('自定义')) return ""; 
 
         const upperName = name.toUpperCase();
         
-        // 1. 高频缩写/硬编码直达
         if (upperName.includes('LOHAS') || upperName.includes('乐')) return "LOHAS";
         if (upperName.includes('BOUNCE')) return "Bounce";
         if (upperName.includes('MADE IN V') || upperName === 'V') return "MADE IN V";
@@ -273,14 +306,12 @@
         if (upperName.includes('GH5')) return "GH5";
         if (upperName.includes('RB')) return "RB";
 
-        // 2. 动态遍历历史库，防止已有厂牌名称被乱切
         const existingTags = [...new Set(historyPriceDatabase.map(h => h.studio))].filter(Boolean);
-        existingTags.sort((a,b) => b.length - a.length); // 长的优先匹配
+        existingTags.sort((a,b) => b.length - a.length);
         for (let tag of existingTags) {
             if (upperName.includes(tag.toUpperCase())) return tag;
         }
 
-        // 3. 智能截取新厂牌（有空格取空格前，没空格取前4个字符作为独立厂牌名）
         if (name.includes(' ')) {
             return name.split(' ')[0].trim();
         }
@@ -296,12 +327,12 @@
         if (field === 'price') record.price = parseFloat(value) || 0;
         if (field === 'count') record.count = parseInt(value) || 0;
 
-        // 利用核心解析引擎同步更新厂牌
         let newTag = getStudioTag(record.title);
         if(newTag === "") newTag = "全局暂存";
         record.studio = newTag;
 
         recalculate();
+        saveLocalCache();
     }
 
     function deleteHistoryRecord(id) {
@@ -309,6 +340,7 @@
         if (index !== -1) {
             historyPriceDatabase.splice(index, 1);
             recalculate();
+            saveLocalCache();
         }
     }
 
@@ -332,6 +364,7 @@
         renderDashboardCards();
         syncTuningPanel(); 
         recalculate();
+        saveLocalCache();
         
         setTimeout(() => {
             const container = document.getElementById('studio-board-container');
@@ -355,7 +388,7 @@
         historyPriceDatabase.unshift({
             id: 'h_dyn_' + Date.now(),
             studio: parsedStudioTag,
-            date: curDateStr,
+            date: curStr,
             title: data.name,
             price: data.price,
             count: data.totalCount
@@ -363,6 +396,7 @@
 
         alert(`✅ 归档成功！当前账面已作为 [${parsedStudioTag}] 厂牌的历史参考基准存入数据库。`);
         recalculate(); 
+        saveLocalCache();
     }
 
     function renderDashboardCards() {
@@ -420,12 +454,12 @@
         const data = studioData[currentStudio];
         if(!data) return;
         document.getElementById('tune-name').value = data.name;
-        document.getElementById('tune-price').value = data.price || '';
-        document.getElementById('tune-count').value = data.totalCount || '';
-        document.getElementById('tune-days1').value = data.days1 || '';
-        document.getElementById('tune-count1').value = data.count1 || '';
-        document.getElementById('tune-days2').value = data.days2 || '';
-        document.getElementById('tune-count2').value = data.count2 || '';
+        document.getElementById('tuneprice').value = data.price || '';
+        document.getElementById('tunecount').value = data.totalCount || '';
+        document.getElementById('tunedays1').value = data.days1 || '';
+        document.getElementById('tunecount1').value = data.count1 || '';
+        document.getElementById('tunedays2').value = data.days2 || '';
+        document.getElementById('tunecount2').value = data.count2 || '';
     }
 
     function handleManualTune() {
@@ -456,6 +490,7 @@
         }
         
         recalculate();
+        saveLocalCache();
     }
 
     function updateFilteredHistoryRecords(currentName) {
@@ -463,7 +498,6 @@
         const titleNode = document.getElementById('history-filter-title');
         const avgDisplayNode = document.getElementById('history-avg-display');
         
-        // 核心隔离逻辑注入
         const matchedTag = getStudioTag(currentName);
 
         let filteredList = historyPriceDatabase;
@@ -510,9 +544,36 @@
         logsContainer.innerHTML = htmlStr;
     }
 
+    // 🔥 海报分析解析模拟：自动生成扫描卡片
     function mockPosterAnalysis(event) {
         if(event.target.files.length > 0) {
-            alert("✨ 扫描解析完成，数据已代入沙盒环境。");
+            schemeCounter++;
+            const newId = 'scheme_' + schemeCounter;
+            
+            studioData[newId] = {
+                name: '海报解析新厂牌 ' + schemeCounter,
+                price: 2600,
+                totalCount: 40,
+                days1: 180,
+                count1: 40,
+                days2: 0,
+                count2: 0,
+                base: 65.00,
+                isComplex: false
+            };
+
+            currentStudio = newId; 
+            renderDashboardCards();
+            syncTuningPanel(); 
+            recalculate();
+            saveLocalCache();
+            
+            setTimeout(() => {
+                const container = document.getElementById('studio-board-container');
+                container.scrollLeft = container.scrollWidth;
+            }, 100);
+
+            alert("✨ 扫描解析完成！已为您在看板中生成一张新厂牌的精算对账卡片。");
         }
     }
 
