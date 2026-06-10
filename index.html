@@ -69,14 +69,18 @@
         .tuning-group label { font-size: 11px; color: var(--slate-600); font-weight: 600; }
         .tuning-group input { width: 100%; padding: 6px 10px; border: 1px solid var(--slate-200); border-radius: 6px; font-size: 13px; font-weight: 600; color: var(--navy); background: #ffffff; }
 
+        /* 只读联动总次数的特殊样式 */
+        .tuning-group input[readonly] { background: var(--slate-100); color: var(--slate-700); cursor: not-allowed; border-color: var(--slate-200); }
+
         .add-btn { background: var(--slate-700); color: white; border: none; padding: 9px; border-radius: 6px; font-weight: 700; font-size: 12px; cursor: pointer; text-align: center; transition: background 0.2s; }
         .add-btn:active { opacity: 0.8; }
 
-        /* iOS 上传安全底层容器 */
-        .upload-zone { position: relative; border: 1px dashed var(--slate-300); background-color: var(--slate-50); border-radius: 12px; padding: 14px; text-align: center; cursor: pointer; margin-bottom: 15px; overflow: hidden; }
-        .upload-icon { font-size: 20px; margin-bottom: 2px; display: block; pointer-events: none; opacity: 0.7; }
-        .upload-text { font-size: 12px; font-weight: 600; color: var(--slate-600); pointer-events: none; }
-        .ios-file-overlay { position: absolute; top: 0; left: 0; width: 100%; height: 100%; opacity: 0; cursor: pointer; font-size: 100px; }
+        /* 微调：勾选区域样式 */
+        .checkbox-stage-wrapper { grid-column: span 2; display: flex; align-items: center; gap: 8px; padding: 4px 2px; margin-top: 2px; }
+        .checkbox-stage-wrapper input[type="checkbox"] { width: 16px; height: 16px; accent-color: var(--navy); cursor: pointer; }
+        .checkbox-stage-wrapper label { font-size: 12px; font-weight: 700; color: var(--navy); cursor: pointer; }
+        
+        .stage-hidden { display: none !important; }
         
         .risk-list { display: flex; flex-direction: column; gap: 10px; }
         .risk-row { display: flex; align-items: center; background: #ffffff; border: 1px solid var(--slate-200); border-radius: 12px; padding: 12px; }
@@ -105,13 +109,11 @@
             <div class="anchor-title" id="history-filter-title">⚓ 历史比价账目核算 (点击展开/收起) ▾</div>
             <div class="anchor-val" id="history-avg-display">计算中...</div>
         </div>
-        <div class="history-logs" id="history-logs-box">
-            </div>
+        <div class="history-logs" id="history-logs-box"></div>
     </div>
 
     <div class="section-title">🏢 方案对比分析轴 (价格最优已排首位 · 左右滑动)</div>
-    <div class="dashboard-scroll" id="studio-board-container">
-        </div>
+    <div class="dashboard-scroll" id="studio-board-container"></div>
 
     <div class="section-title">🛠️ 账面数据核算校准器 (所见即所得)</div>
     <div class="tuning-panel">
@@ -125,40 +127,43 @@
             <label>✍️ 编辑选中方案名称 (空格前的字将自动作为该厂牌名进行分类隔离)</label>
             <input type="text" id="tune-name" oninput="handleManualTune()">
         </div>
+
+        <div class="checkbox-stage-wrapper">
+            <input type="checkbox" id="tune-is-complex" onchange="toggleStageCheckbox(this.checked)">
+            <label for="tune-is-complex">开启多阶段核算 (包含赠卡/续卡次卡)</label>
+        </div>
+
         <div class="tuning-group">
             <label>账面折后总价 (元)</label>
             <input type="number" id="tune-price" oninput="handleManualTune()">
         </div>
         <div class="tuning-group">
-            <label>总课次数 (共几节)</label>
-            <input type="number" id="tune-count" oninput="handleManualTune()">
+            <label>总课次数 (1阶+2阶自动累加)</label>
+            <input type="number" id="tune-count" readonly placeholder="由阶段次数自动计算">
         </div>
-        <div class="tuning-group">
-            <label>1阶段时效 (天)</label>
+
+        <div class="tuning-group" id="group-days1">
+            <label id="label-days1">方案总时效 (天)</label>
             <input type="number" id="tune-days1" oninput="handleManualTune()">
         </div>
-        <div class="tuning-group">
-            <label>1阶段次数 (节)</label>
+        <div class="tuning-group" id="group-count1">
+            <label id="label-count1">方案总次数 (节)</label>
             <input type="number" id="tune-count1" oninput="handleManualTune()">
         </div>
-        <div class="tuning-group">
+
+        <div class="tuning-group stage-hidden" id="group-days2">
             <label>⏳ 2阶段时效 (天)</label>
             <input type="number" id="tune-days2" oninput="handleManualTune()">
         </div>
-        <div class="tuning-group">
+        <div class="tuning-group stage-hidden" id="group-count2">
             <label>⏳ 2阶段次数 (节)</label>
             <input type="number" id="tune-count2" oninput="handleManualTune()">
         </div>
+
         <div class="tuning-group" style="grid-column: span 2;">
             <label>🏃‍♂️ 设定个人消卡极限(次/周)</label>
-            <input type="number" id="tune-frequency" value="1.8" step="0.1" oninput="handleManualTune()">
+            <input type="number" id="tune-frequency" value="2" step="0.1" oninput="handleManualTune()">
         </div>
-    </div>
-
-    <div class="upload-zone">
-        <span class="upload-icon">📁</span>
-        <div class="upload-text">选取或拍照扫描新舞房海报/对账单</div>
-        <input type="file" class="ios-file-overlay" accept="image/*" onchange="mockPosterAnalysis(event)">
     </div>
 
     <div class="section-title">🚨 当前方案动态运营风控</div>
@@ -217,16 +222,15 @@
     let showHistoryLogs = true;
 
     const studioData = {
-        scheme_3: { name: 'MADE IN V 周年包', price: 3940, totalCount: 100, days1: 365, count1: 100, days2: 0, count2: 0, base: 39.40, isComplex: false },
-        scheme_1: { name: 'LOHAS 组合大包', price: 5898, totalCount: 130, days1: 120, count1: 30, days2: 480, count2: 100, base: 45.37, isComplex: true },
-        scheme_2: { name: 'Bounce 减免包', price: 5186.8, totalCount: 88, days1: 365, count1: 88, days2: 0, count2: 0, base: 58.94, isComplex: false }
+        scheme_3: { name: 'MADE IN V 618活动', price: 3940, totalCount: 100, days1: 365, count1: 100, days2: 0, count2: 0, base: 39.40, isComplex: false },
+        scheme_1: { name: 'LOHAS 618活动', price: 5898, totalCount: 130, days1: 120, count1: 30, days2: 480, count2: 100, base: 45.37, isComplex: true },
+        scheme_2: { name: 'Bounce 618活动', price: 5186.8, totalCount: 88, days1: 365, count1: 88, days2: 0, count2: 0, base: 58.94, isComplex: false }
     };
 
-    // 核心历史数据库
     const historyPriceDatabase = [
-        { id: 'h_3', studio: 'MADE IN V', date: '2024.12', title: 'MADE IN V 纯净对账单', price: 5500, count: 100 },
-        { id: 'h_1', studio: 'LOHAS', date: '2025.10', title: 'LOHAS 120节历史存根', price: 6300, count: 120 },
-        { id: 'h_2', studio: 'Bounce', date: '2025.05', title: 'Bounce 活动减免卡', price: 4998, count: 88 }
+        { id: 'h_3', studio: 'MADE IN V', date: '2025.11', title: 'MADE IN V 双11', price: 3380, count: 50 },
+        { id: 'h_1', studio: 'LOHAS', date: '2025.11', title: 'LOHAS 双11', price: 5460, count: 120 },
+        { id: 'h_2', studio: 'Bounce', date: '2025.11', title: 'Bounce 双11', price: 5192, count: 92 }
     ];
 
     window.onload = function() {
@@ -257,15 +261,12 @@
         recalculate();
     }
 
-    // 🔥 核心修正引擎：智能提取厂牌标识
     function getStudioTag(name) {
         if (!name) return "";
-        // 只有初始默认名称才会触发全局大盘视图
         if (name.startsWith('未命名') || name.startsWith('自定义')) return ""; 
 
         const upperName = name.toUpperCase();
         
-        // 1. 高频缩写/硬编码直达
         if (upperName.includes('LOHAS') || upperName.includes('乐')) return "LOHAS";
         if (upperName.includes('BOUNCE')) return "Bounce";
         if (upperName.includes('MADE IN V') || upperName === 'V') return "MADE IN V";
@@ -273,14 +274,12 @@
         if (upperName.includes('GH5')) return "GH5";
         if (upperName.includes('RB')) return "RB";
 
-        // 2. 动态遍历历史库，防止已有厂牌名称被乱切
         const existingTags = [...new Set(historyPriceDatabase.map(h => h.studio))].filter(Boolean);
-        existingTags.sort((a,b) => b.length - a.length); // 长的优先匹配
+        existingTags.sort((a,b) => b.length - a.length);
         for (let tag of existingTags) {
             if (upperName.includes(tag.toUpperCase())) return tag;
         }
 
-        // 3. 智能截取新厂牌（有空格取空格前，没空格取前4个字符作为独立厂牌名）
         if (name.includes(' ')) {
             return name.split(' ')[0].trim();
         }
@@ -296,7 +295,6 @@
         if (field === 'price') record.price = parseFloat(value) || 0;
         if (field === 'count') record.count = parseInt(value) || 0;
 
-        // 利用核心解析引擎同步更新厂牌
         let newTag = getStudioTag(record.title);
         if(newTag === "") newTag = "全局暂存";
         record.studio = newTag;
@@ -421,23 +419,77 @@
         if(!data) return;
         document.getElementById('tune-name').value = data.name;
         document.getElementById('tune-price').value = data.price || '';
-        document.getElementById('tune-count').value = data.totalCount || '';
         document.getElementById('tune-days1').value = data.days1 || '';
         document.getElementById('tune-count1').value = data.count1 || '';
         document.getElementById('tune-days2').value = data.days2 || '';
         document.getElementById('tune-count2').value = data.count2 || '';
+
+        // 同步勾选框状态
+        const checkbox = document.getElementById('tune-is-complex');
+        checkbox.checked = data.isComplex;
+        
+        renderStageUIByState(data.isComplex);
+    }
+
+    // 勾选框触发显隐联动
+    function toggleStageCheckbox(isChecked) {
+        if(!studioData[currentStudio]) return;
+        
+        studioData[currentStudio].isComplex = isChecked;
+        
+        // 未勾选双阶段时，自动将2阶段数据清零，防脏数据污染
+        if(!isChecked) {
+            document.getElementById('tune-days2').value = 0;
+            document.getElementById('tune-count2').value = 0;
+            studioData[currentStudio].days2 = 0;
+            studioData[currentStudio].count2 = 0;
+        }
+        
+        renderStageUIByState(isChecked);
+        handleManualTune();
+    }
+
+    // 处理文本标签及输入框隐藏显示的辅助函数
+    function renderStageUIByState(isComplex) {
+        const gDays2 = document.getElementById('group-days2');
+        const gCount2 = document.getElementById('group-count2');
+        const lblDays1 = document.getElementById('label-days1');
+        const lblCount1 = document.getElementById('label-count1');
+
+        if(isComplex) {
+            gDays2.classList.remove('stage-hidden');
+            gCount2.classList.remove('stage-hidden');
+            lblDays1.innerText = "1阶段时效 (天)";
+            lblCount1.innerText = "1阶段次数 (节)";
+        } else {
+            gDays2.classList.add('stage-hidden');
+            gCount2.classList.add('stage-hidden');
+            lblDays1.innerText = "方案总时效 (天)";
+            lblCount1.innerText = "方案总次数 (节)";
+        }
     }
 
     function handleManualTune() {
+        if(!studioData[currentStudio]) return;
+
         const nameInput = document.getElementById('tune-name').value || '未命名方案';
         const p = parseFloat(document.getElementById('tune-price').value) || 0;
-        const totalC = parseInt(document.getElementById('tune-count').value) || 0;
         const d1 = parseInt(document.getElementById('tune-days1').value) || 0;
         const c1 = parseInt(document.getElementById('tune-count1').value) || 0;
-        const d2 = parseInt(document.getElementById('tune-days2').value) || 0;
-        const c2 = parseInt(document.getElementById('tune-count2').value) || 0;
         
-        if(!studioData[currentStudio]) return;
+        const isComplex = document.getElementById('tune-is-complex').checked;
+        let d2 = 0;
+        let c2 = 0;
+        
+        if (isComplex) {
+            d2 = parseInt(document.getElementById('tune-days2').value) || 0;
+            c2 = parseInt(document.getElementById('tune-count2').value) || 0;
+        }
+
+        // 核心修正：总次数直接由 1阶段次数 + 2阶段次数 自动计算累加
+        const totalC = c1 + c2;
+        document.getElementById('tune-count').value = totalC; // 同步反馈给只读框
+        
         studioData[currentStudio].name = nameInput;
         studioData[currentStudio].price = p;
         studioData[currentStudio].totalCount = totalC;
@@ -445,8 +497,7 @@
         studioData[currentStudio].count1 = c1;
         studioData[currentStudio].days2 = d2;
         studioData[currentStudio].count2 = c2;
-        
-        studioData[currentStudio].isComplex = (d2 > 0 || c2 > 0);
+        studioData[currentStudio].isComplex = isComplex;
         studioData[currentStudio].base = totalC > 0 ? p / totalC : 0;
         
         const cardNode = document.getElementById('card-' + currentStudio);
@@ -463,7 +514,6 @@
         const titleNode = document.getElementById('history-filter-title');
         const avgDisplayNode = document.getElementById('history-avg-display');
         
-        // 核心隔离逻辑注入
         const matchedTag = getStudioTag(currentName);
 
         let filteredList = historyPriceDatabase;
@@ -510,16 +560,10 @@
         logsContainer.innerHTML = htmlStr;
     }
 
-    function mockPosterAnalysis(event) {
-        if(event.target.files.length > 0) {
-            alert("✨ 扫描解析完成，数据已代入沙盒环境。");
-        }
-    }
-
     function recalculate() {
         const data = studioData[currentStudio];
         if(!data) return;
-        const userLimit = parseFloat(document.getElementById('tune-frequency').value) || 1.8;
+        const userLimit = parseFloat(document.getElementById('tune-frequency').value) || 2;
         
         let riskFactor = 1;
         const isSalaryArrears = document.getElementById('r-salary').checked;
@@ -581,6 +625,15 @@
                 if(p2Box) p2Box.innerHTML = p > userLimit ? "<span style='color:var(--warning);'>⚠️ 超载</span>" : "<span style='color:var(--success);'>🟢 安全</span>";
             }
         });
+        
+        const container = document.getElementById('studio-board-container');
+        const cards = Array.from(container.children);
+        cards.sort((a, b) => {
+            const idA = a.id.replace('card-', '');
+            const idB = b.id.replace('card-', '');
+            return (studioData[idA]?.base || 0) - (studioData[idB]?.base || 0);
+        });
+        cards.forEach(card => container.appendChild(card));
     }
 </script>
 </body>
