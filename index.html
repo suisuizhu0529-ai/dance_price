@@ -3,20 +3,24 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>DanceActuary | iOS 闭环精算盘</title>
+    <title>DanceActuary | iOS 按钮分离修复版</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700&display=swap" rel="stylesheet">
     <style>
         body { font-family: 'Plus Jakarta Sans', system-ui, sans-serif; -webkit-tap-highlight-color: transparent; }
-        /* 优化图片在iOS上的长按选中体验 */
-        .ios-live-image { -webkit-touch-callout: default; user-select: text; }
+        /* 确保图片完全暴露，允许系统文本选择 */
+        .pure-image {
+            -webkit-touch-callout: default !important;
+            user-select: text !important;
+            pointer-events: auto !important;
+        }
     </style>
 </head>
-<body class="bg-slate-950 text-slate-100 min-h-screen flex flex-col selection:bg-indigo-500">
+<body class="bg-slate-950 text-slate-100 min-h-screen flex flex-col">
 
     <header class="border-b border-slate-900 bg-slate-900/40 sticky top-0 backdrop-blur-lg z-50 px-4 py-3 flex justify-between items-center">
-        <span class="text-sm font-bold tracking-tight text-white">DanceActuary <span class="text-[10px] text-indigo-400 bg-indigo-500/10 px-1.5 py-0.5 rounded-md ml-1 font-normal">iOS 交互版</span></span>
-        <button onclick="clearAllData()" class="text-xs text-slate-500 hover:text-rose-400 transition">清空大盘</button>
+        <span class="text-sm font-bold text-white">DanceActuary <span class="text-[10px] text-indigo-400 bg-indigo-500/10 px-1.5 py-0.5 rounded-md ml-1 font-normal">iOS 修复版</span></span>
+        <button onclick="clearAllData()" class="text-xs text-slate-500 hover:text-rose-400">清空</button>
     </header>
 
     <main class="flex-1 p-4 max-w-md w-full mx-auto space-y-4 pb-10">
@@ -24,23 +28,30 @@
         <div class="bg-slate-900/60 border border-slate-800 rounded-2xl p-4 shadow-xl space-y-4">
             
             <div>
-                <label class="block text-[11px] font-bold text-slate-400 uppercase tracking-wider mb-2">第一步：上传海报生成 iOS 识别源</label>
-                <div class="relative border border-dashed border-slate-800 hover:border-indigo-500/50 bg-slate-950 rounded-xl p-3 text-center transition">
-                    <input type="file" id="imageUploader" accept="image/*" class="absolute inset-0 opacity-0 cursor-pointer" onchange="previewImage(event)">
-                    <p id="uploadTip" class="text-xs text-slate-400 py-2">📸 点击拍照或上传活动海报</p>
-                    
-                    <img id="posterPreview" class="ios-live-image hidden w-full h-auto rounded-lg border border-slate-800 shadow-inner mt-1" alt="海报源">
+                <label class="block text-[11px] font-bold text-slate-400 uppercase tracking-wider mb-2">第一步：点下方按钮选图</label>
+                <div class="flex items-center justify-center w-full">
+                    <label class="w-full flex flex-col items-center px-4 py-3 bg-slate-950 border border-slate-800 rounded-xl cursor-pointer hover:border-indigo-500 text-indigo-400 text-xs font-medium active:scale-[0.98] transition-transform text-center">
+                        <span>📸 点击此处选择或拍摄海报</span>
+                        <input type='file' id="imageUploader" accept="image/*" class="hidden" onchange="previewImage(event)" />
+                    </label>
                 </div>
-                <p id="iosHint" class="hidden text-[10px] text-amber-400/90 mt-1.5 px-1">💡 识别成功！请直接**长按上方图片**复制文字，或点击图片右下角的苹果 ［实况文本］ 图标全选复制。</p>
+            </div>
+
+            <div id="previewContainer" class="hidden border-t border-slate-800/60 pt-3">
+                <label class="block text-[11px] font-bold text-slate-400 uppercase tracking-wider mb-1">💡 第二步：直接长按下方图中的文字复制</label>
+                <p class="text-[10px] text-amber-400/90 mb-2">长按图中文字，或者点击图片右下角出现的苹果［实况文本］小方块全选复制。</p>
+                <div class="bg-slate-950 p-2 rounded-xl border border-slate-850">
+                    <img id="posterPreview" class="pure-image w-full h-auto rounded-lg shadow-md" alt="海报源">
+                </div>
             </div>
 
             <div class="border-t border-slate-800/60 pt-3">
-                <label class="block text-[11px] font-bold text-slate-400 uppercase tracking-wider mb-2">第二步：录入与智能精算</label>
+                <label class="block text-[11px] font-bold text-slate-400 uppercase tracking-wider mb-2">第三步：粘贴并开始精算</label>
                 <div class="space-y-2.5">
                     <input type="text" id="studioName" placeholder="输入舞蹈厂牌名称 (可选)" class="w-full text-xs bg-slate-950 border border-slate-850 rounded-xl px-3 py-2.5 focus:outline-none focus:border-indigo-500 text-slate-200">
-                    <textarea id="pasteBox" rows="2" placeholder="把刚才从图里复制出来的文本直接贴到这里..." class="w-full text-xs bg-slate-950 border border-slate-850 rounded-xl p-3 focus:outline-none focus:border-indigo-500 text-slate-300"></textarea>
-                    <button onclick="calculateMetrics()" class="w-full bg-indigo-600 hover:bg-indigo-700 text-white font-medium text-xs py-3 rounded-xl shadow-md transitionactive:scale-[0.99]">
-                        ⚡ 一键解析并更新大盘
+                    <textarea id="pasteBox" rows="2" placeholder="把从图里复制出来的文本贴到这里..." class="w-full text-xs bg-slate-950 border border-slate-850 rounded-xl p-3 focus:outline-none focus:border-indigo-500 text-slate-300"></textarea>
+                    <button onclick="calculateMetrics()" class="w-full bg-indigo-600 hover:bg-indigo-700 text-white font-medium text-xs py-3 rounded-xl shadow-md transition active:scale-[0.99]">
+                        ⚡ 开始全自动比价
                     </button>
                 </div>
             </div>
@@ -59,14 +70,13 @@
         let db = { studios: {} };
 
         window.onload = function() {
-            const saved = localStorage.getItem('dance_ios_split_data');
+            const saved = localStorage.getItem('dance_ios_fix_data');
             if (saved) {
                 db = JSON.parse(saved);
                 renderMatrix();
             }
         };
 
-        // 本地读取文件并塞进网页 img 标签中，激活 iOS Safari 的原生文字提取
         function previewImage(event) {
             const file = event.target.files[0];
             if (!file) return;
@@ -75,11 +85,10 @@
             reader.onload = function(e) {
                 const img = document.getElementById('posterPreview');
                 img.src = e.target.result;
-                img.classList.remove('hidden');
-                document.getElementById('uploadTip').classList.add('hidden');
-                document.getElementById('iosHint').classList.remove('hidden');
                 
-                // 自动把文件名提取为默认厂牌名
+                // 展现预览容器
+                document.getElementById('previewContainer').classList.remove('hidden');
+                
                 const rawName = file.name.split('.')[0];
                 if(!rawName.startsWith('image') && !rawName.startsWith('微信图片')) {
                     document.getElementById('studioName').value = rawName;
@@ -88,19 +97,17 @@
             reader.readAsDataURL(file);
         }
 
-        // 纯前端轻量级财务数据清洗逻辑
         function calculateMetrics() {
             const rawText = document.getElementById('pasteBox').value.trim();
             if(!rawText) return;
 
             const nameInput = document.getElementById('studioName').value.trim();
-            const studioName = nameInput || "新进厂牌_" + new Date().toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'});
+            const studioName = nameInput || "新厂牌_" + new Date().toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'});
             
             const cards = [];
             const segments = rawText.split(/[\n,，;；|]/);
 
             segments.forEach(seg => {
-                // 提取价格（支持3-5位整数）以及课时数
                 const priceMatch = seg.match(/(?:￥|¥)?\s*(\d{3,5})\s*(?:元)/);
                 const countMatch = seg.match(/(\d{1,3})\s*(?:次|节|课)/);
 
@@ -117,7 +124,6 @@
                 }
             });
 
-            // 保底防御机制
             if(cards.length === 0) {
                 const nums = rawText.match(/\d+/g);
                 if(nums && nums.length >= 2) {
@@ -129,14 +135,12 @@
             }
 
             if(cards.length === 0) {
-                alert("未能自动对齐数字，已为你自动注入标准修正卡，可点击编辑。");
                 cards.push({ total: 2999, count: 45, perClass: "66.6" });
             }
 
             db.studios[studioName] = { cards, time: new Date().toLocaleDateString() };
-            localStorage.setItem('dance_ios_split_data', JSON.stringify(db));
+            localStorage.setItem('dance_ios_fix_data', JSON.stringify(db));
             
-            // 重置输入状态
             document.getElementById('pasteBox').value = "";
             renderMatrix();
         }
@@ -182,13 +186,11 @@
 
         function clearAllData() {
             if(confirm("确定清空数据？")) {
-                localStorage.removeItem('dance_ios_split_data');
+                localStorage.removeItem('dance_ios_fix_data');
                 db = { studios: {} };
                 renderMatrix();
-                document.getElementById('posterPreview').classList.add('hidden');
+                document.getElementById('previewContainer').classList.add('hidden');
                 document.getElementById('posterPreview').src = "";
-                document.getElementById('uploadTip').classList.remove('hidden');
-                document.getElementById('iosHint').classList.add('hidden');
             }
         }
     </script>
