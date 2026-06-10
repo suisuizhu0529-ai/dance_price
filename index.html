@@ -370,7 +370,7 @@
     }
 
     /* 厂牌提取逻辑优化：确保提取出的英文文本直接大写 */
-    function getStudioTag(name) {
+function getStudioTag(name) {
     if (!name) return "";
     if (name.startsWith('未命名') || name.startsWith('自定义')) return ""; 
 
@@ -379,20 +379,27 @@
     const databaseBrands = historyPriceDatabase.map(item => item.studio.toUpperCase());
     const allKnownBrands = [...new Set([...customBrandList.map(b => b.toUpperCase()), ...databaseBrands])].filter(Boolean);
     
-    // 按照长度从长到短排序
+    // 核心修复 1：按长度从长到短排序，确保优先匹配 "MADE IN V" 而不是 "MADE"
     allKnownBrands.sort((a, b) => b.length - a.length);
     
-    // 精确匹配：判断是否以已知厂牌开头，或者后面紧跟空格/特定字符
+    // 核心修复 2：严格前缀与边界匹配
     for (let tag of allKnownBrands) {
-        if (upperName === tag || upperName.startsWith(tag + " ") || upperName.startsWith(tag)) {
+        // 转义厂牌中的特殊正则字符
+        const escapedTag = tag.replace(/[-\/\\^$*+?.()|[\]{}]/g, '\\$&');
+        // 匹配规则：必须是该厂牌开头，且厂牌后面必须跟着空格、标点符号、或者直接结束
+        const regex = new RegExp('^' + escapedTag + '(\\b|\\s|$|[^A-Z0-9])');
+        
+        if (regex.test(upperName)) {
             return tag;
         }
     }
 
-    // 兜底策略：如果没在已知列表里，按空格切分取第一段
-    if (name.includes(' ')) return name.split(' ')[0].trim().toUpperCase();
+    // 兜底策略：如果没在已知列表里，按第一个空格或特殊符号切分
+    const firstWord = name.split(/[\s\-_/]+/)[0].trim().toUpperCase();
+    if (firstWord && firstWord.length >= 2) return firstWord;
+    
     return name.substring(0, 8).trim().toUpperCase();
-}
+    }
 
     function handleHistoryRowChange(id, field, value) {
         const record = historyPriceDatabase.find(item => item.id === id);
