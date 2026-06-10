@@ -374,25 +374,36 @@ function getStudioTag(name) {
     if (!name) return "";
     if (name.startsWith('未命名') || name.startsWith('自定义')) return ""; 
 
+    // 1. 【新增强校正逻辑】如果名字里包含 ONEWAY，直接一锤定音返回 ONEWAY
     const upperName = name.toUpperCase().trim();
-    
+    if (upperName.includes('ONEWAY')) {
+        return 'ONEWAY';
+    }
+
     const databaseBrands = historyPriceDatabase.map(item => item.studio.toUpperCase());
     const allKnownBrands = [...new Set([...customBrandList.map(b => b.toUpperCase()), ...databaseBrands])].filter(Boolean);
     
-    // 核心修复 1：按长度从长到短排序，确保优先匹配 "MADE IN V" 而不是 "MADE"
     allKnownBrands.sort((a, b) => b.length - a.length);
     
-    // 核心修复 2：严格前缀与边界匹配
     for (let tag of allKnownBrands) {
-        // 转义厂牌中的特殊正则字符
         const escapedTag = tag.replace(/[-\/\\^$*+?.()|[\]{}]/g, '\\$&');
-        // 匹配规则：必须是该厂牌开头，且厂牌后面必须跟着空格、标点符号、或者直接结束
         const regex = new RegExp('^' + escapedTag + '(\\b|\\s|$|[^A-Z0-9])');
         
         if (regex.test(upperName)) {
+            // 2. 【防翻车兜底】即使正则匹配到了，只要结果长得像 "MADE I..."，也强行更正
+            if (tag.startsWith('MADE I')) return 'ONEWAY';
             return tag;
         }
     }
+
+    const firstWord = name.split(/[\s\-_/]+/)[0].trim().toUpperCase();
+    if (firstWord && firstWord.length >= 2) {
+        if (firstWord.startsWith('MADE I')) return 'ONEWAY';
+        return firstWord;
+    }
+    
+    return name.substring(0, 8).trim().toUpperCase();
+}
 
     // 兜底策略：如果没在已知列表里，按第一个空格或特殊符号切分
     const firstWord = name.split(/[\s\-_/]+/)[0].trim().toUpperCase();
